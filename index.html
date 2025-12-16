@@ -1,0 +1,3214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeChild QR</title>
+    <!-- QR Code Style Favicon -->
+    <link rel="icon" href="data:image/svg+xml,
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
+  <rect width='100' height='100' fill='%232563eb' rx='15'/>
+  <rect x='20' y='20' width='60' height='60' fill='white'/>
+  <!-- QR pattern -->
+  <rect x='30' y='30' width='15' height='15' fill='%232563eb'/>
+  <rect x='55' y='30' width='15' height='15' fill='%232563eb'/>
+  <rect x='30' y='55' width='15' height='15' fill='%232563eb'/>
+  <rect x='55' y='55' width='15' height='15' fill='%232563eb'/>
+  <!-- Center protection dot -->
+  <circle cx='50' cy='50' r='8' fill='white'/>
+  <circle cx='50' cy='50' r='5' fill='%232563eb'/>
+</svg>">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- QR Code Library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <style>
+        /* CSS Reset & Base */
+        :root {
+            --primary-blue: #2563eb;
+            --primary-blue-dark: #1d4ed8;
+            --secondary-green: #10b981;
+            --secondary-green-dark: #0d9668;
+            --accent-purple: #8b5cf6;
+            --accent-purple-dark: #7c3aed;
+            --light-bg: #f8fafc;
+            --light-card: #ffffff;
+            --light-text: #1e293b;
+            --light-text-secondary: #64748b;
+            --light-border: #e2e8f0;
+            --dark-bg: #0f172a;
+            --dark-card: #1e293b;
+            --dark-text: #f1f5f9;
+            --dark-text-secondary: #cbd5e1;
+            --dark-border: #334155;
+            --danger-red: #ef4444;
+            --danger-red-dark: #dc2626;
+            --warning-orange: #f59e0b;
+            --success-green: #10b981;
+            --transition-speed: 0.3s;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            --radius: 12px;
+            --radius-lg: 20px;
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: background-color var(--transition-speed) ease, border-color var(--transition-speed) ease;
+        }
+
+        body {
+            background-color: var(--light-bg);
+            color: var(--light-text);
+            min-height: 100vh;
+            line-height: 1.6;
+            overflow-x: hidden;
+            padding-top: 80px;
+            padding-bottom: 0px;
+        }
+
+        body.dark-theme {
+            background-color: var(--dark-bg);
+            color: var(--dark-text);
+        }
+
+        /* Layout */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        .page {
+            display: none;
+            min-height: calc(100vh - 160px);
+            padding-top: 20px;
+            padding-bottom: 4rem;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .section {
+            margin-bottom: 3rem;
+        }
+
+        /* Header - FIXED THEME COLORS */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--light-card);
+            box-shadow: var(--shadow-md);
+            z-index: 1000;
+            padding: 0.8rem 0;
+            border-bottom: 1px solid var(--light-border);
+            height: 80px;
+            backdrop-filter: blur(10px);
+        }
+
+        .dark-theme .header {
+            background-color: var(--dark-card);
+            border-bottom-color: var(--dark-border);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 100%;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary-blue), var(--accent-purple));
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.8rem;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo-icon::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transform: rotate(45deg);
+            animation: shine 3s infinite;
+        }
+
+        .logo-text h1 {
+            font-size: 1.6rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-text p {
+            font-size: 0.8rem;
+            color: var(--light-text-secondary);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .dark-theme .logo-text p {
+            color: var(--dark-text-secondary);
+        }
+
+        .nav-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-blue), var(--accent-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1.1rem;
+            box-shadow: var(--shadow-md);
+            border: 3px solid var(--light-border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dark-theme .user-avatar {
+            border-color: var(--dark-border);
+        }
+
+        .user-avatar::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(135deg, var(--primary-blue), var(--accent-purple));
+            border-radius: 50%;
+            z-index: -1;
+            animation: pulse-ring 2s infinite;
+        }
+
+        .user-name {
+            font-weight: 700;
+            color: var(--light-text);
+            font-size: 1rem;
+            text-align: right;
+        }
+
+        .dark-theme .user-name {
+            color: var(--dark-text);
+        }
+
+        /* Buttons - IMPROVED LOADING SPINNER */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.875rem 1.75rem;
+            border-radius: var(--radius);
+            font-weight: 600;
+            font-size: 0.95rem;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all var(--transition-speed) ease;
+            white-space: nowrap;
+            user-select: none;
+            position: relative;
+            overflow: hidden;
+            min-height: 44px;
+            min-width: 120px;
+            font-family: inherit;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-loading {
+            pointer-events: none;
+        }
+
+        .btn-text {
+            transition: opacity 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-loading .btn-text {
+            opacity: 0;
+        }
+
+        .btn-spinner {
+            position: absolute;
+            top: 30%;
+            left: 40%;
+            transform: translate(-50%, -50%);
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            border-right-color: white;
+            animation: spin 0.8s linear infinite;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .btn-loading .btn-spinner {
+            opacity: 1;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-blue), var(--accent-purple));
+            color: white;
+            border: none;
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: linear-gradient(135deg, var(--primary-blue-dark), var(--accent-purple-dark));
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--secondary-green), #0ea5e9);
+            color: white;
+            border: none;
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: linear-gradient(135deg, var(--secondary-green-dark), #0284c7);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger-red), #f97316);
+            color: white;
+            border: none;
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: linear-gradient(135deg, var(--danger-red-dark), #ea580c);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--primary-blue);
+            border: 2px solid var(--primary-blue);
+        }
+
+        .dark-theme .btn-outline {
+            color: #93c5fd;
+            border-color: var(--primary-blue);
+        }
+
+        .btn-outline:hover:not(:disabled) {
+            background: rgba(37, 99, 235, 0.1);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* Button Icons - FIXED THEME COLORS */
+        .btn-icon {
+            width: 46px;
+            height: 46px;
+            padding: 0;
+            border-radius: 12px;
+            background: var(--light-bg);
+            border: 2px solid var(--light-border);
+            color: var(--primary-blue);
+            transition: all var(--transition-speed) ease;
+        }
+
+        .dark-theme .btn-icon {
+            background: var(--dark-card);
+            border-color: var(--dark-border);
+            color: #93c5fd;
+        }
+
+        .btn-icon:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .dark-theme .btn-icon:hover:not(:disabled) {
+            background: rgba(37, 99, 235, 0.2);
+        }
+
+        /* Theme Toggle - FIXED COLORS */
+        .theme-toggle {
+            background: var(--light-bg);
+            border: 2px solid var(--light-border);
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--primary-blue);
+            transition: all var(--transition-speed) ease;
+        }
+
+        .dark-theme .theme-toggle {
+            background: var(--dark-card);
+            border-color: var(--dark-border);
+            color: #93c5fd;
+        }
+
+        .theme-toggle:hover {
+            transform: translateY(-2px) rotate(15deg);
+            box-shadow: var(--shadow-md);
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .dark-theme .theme-toggle:hover {
+            background: rgba(37, 99, 235, 0.2);
+        }
+
+        .theme-toggle i {
+            font-size: 1.3rem;
+            transition: transform 0.3s ease;
+        }
+
+        /* Home Page - Professional */
+        .hero {
+            text-align: center;
+            padding: 5rem 1rem 6rem;
+            max-width: 900px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 300px;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(139, 92, 246, 0.05));
+            border-radius: 0 0 100px 100px;
+            z-index: -1;
+        }
+
+        .hero h2 {
+            font-size: 3.8rem;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, var(--primary-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1.1;
+            font-weight: 900;
+            letter-spacing: -1.5px;
+            text-shadow: 0 2px 20px rgba(37, 99, 235, 0.1);
+        }
+
+        .hero p {
+            font-size: 1.4rem;
+            color: var(--light-text-secondary);
+            margin-bottom: 3rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            font-weight: 500;
+            line-height: 1.8;
+        }
+
+        .dark-theme .hero p {
+            color: var(--dark-text-secondary);
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2.5rem;
+            margin: 6rem 0;
+            position: relative;
+        }
+
+        .steps::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--light-border), transparent);
+            z-index: 1;
+        }
+
+        .dark-theme .steps::before {
+            background: linear-gradient(90deg, transparent, var(--dark-border), transparent);
+        }
+
+        .step-card {
+            background-color: var(--light-card);
+            border-radius: var(--radius-lg);
+            padding: 2.5rem 2rem;
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--light-border);
+            transition: all 0.4s ease;
+            position: relative;
+            z-index: 2;
+            overflow: hidden;
+        }
+
+        .step-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--primary-blue), var(--accent-purple));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.4s ease;
+        }
+
+        .step-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .step-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .dark-theme .step-card {
+            background-color: var(--dark-card);
+            border-color: var(--dark-border);
+        }
+
+        .step-icon {
+            width: 90px;
+            height: 90px;
+            background: linear-gradient(135deg, var(--primary-blue), var(--accent-purple));
+            border-radius: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 2rem;
+            color: white;
+            font-size: 2.5rem;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .step-icon::after {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transform: rotate(45deg);
+            animation: shine 3s infinite;
+        }
+
+        .step-card h3 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            font-weight: 800;
+            color: var(--light-text);
+        }
+
+        .dark-theme .step-card h3 {
+            color: var(--dark-text);
+        }
+
+        .step-card p {
+            color: var(--light-text-secondary);
+            font-size: 1.05rem;
+            line-height: 1.7;
+        }
+
+        .dark-theme .step-card p {
+            color: var(--dark-text-secondary);
+        }
+
+        .privacy-note {
+            text-align: center;
+            max-width: 900px;
+            margin: 5rem auto 0;
+            padding: 3rem;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(139, 92, 246, 0.05));
+            border-radius: var(--radius-lg);
+            border-left: 6px solid var(--secondary-green);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .privacy-note::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at top right, rgba(37, 99, 235, 0.1), transparent 50%);
+        }
+
+        /* Forms - Professional with Password Toggle */
+        .form-container {
+            max-width: 520px;
+            margin: 2rem auto;
+            background-color: var(--light-card);
+            border-radius: var(--radius-lg);
+            padding: 3.5rem;
+            box-shadow: var(--shadow-xl);
+            border: 1px solid var(--light-border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .form-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--primary-blue), var(--accent-purple));
+        }
+
+        .dark-theme .form-container {
+            background-color: var(--dark-card);
+            border-color: var(--dark-border);
+        }
+
+        .form-title {
+            font-size: 2.4rem;
+            margin-bottom: 2.5rem;
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+        }
+
+        .form-group {
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.75rem;
+            font-weight: 700;
+            color: var(--light-text);
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .dark-theme .form-label {
+            color: var(--dark-text);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 1.125rem 1.5rem;
+            border-radius: var(--radius);
+            border: 2px solid var(--light-border);
+            background-color: var(--light-bg);
+            color: var(--light-text);
+            font-size: 1.05rem;
+            font-weight: 500;
+            transition: all var(--transition-speed) ease;
+            font-family: inherit;
+        }
+
+        .dark-theme .form-input {
+            background-color: var(--dark-bg);
+            border-color: var(--dark-border);
+            color: var(--dark-text);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 1.25rem;
+            top: 1rem;
+            background: none;
+            border: none;
+            color: var(--light-text-secondary);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 4px;
+            transition: color 0.2s ease;
+        }
+
+        .password-toggle:hover {
+            color: var(--primary-blue);
+        }
+
+        .dark-theme .password-toggle {
+            color: var(--dark-text-secondary);
+        }
+
+        .dark-theme .password-toggle:hover {
+            color: #93c5fd;
+        }
+
+        .form-text {
+            display: block;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--light-text-secondary);
+            font-weight: 500;
+            line-height: 1.5;
+        }
+
+        .dark-theme .form-text {
+            color: var(--dark-text-secondary);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 3rem;
+        }
+
+        .form-switch {
+            text-align: center;
+            margin-top: 2.5rem;
+            padding-top: 2.5rem;
+            border-top: 2px solid var(--light-border);
+        }
+
+        .dark-theme .form-switch {
+            border-top-color: var(--dark-border);
+        }
+
+        /* Dashboard - Futuristic Cards */
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .dashboard-title {
+            font-size: 2.8rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+            position: relative;
+            display: inline-block;
+        }
+
+        .dashboard-title::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 0;
+            width: 60px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-blue), var(--accent-purple));
+            border-radius: 2px;
+        }
+
+        .children-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 2.5rem;
+        }
+
+        .child-card {
+            background: var(--light-card);
+            border-radius: var(--radius-lg);
+            padding: 2.5rem;
+            border: 1px solid var(--light-border);
+            box-shadow: var(--shadow-lg);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .child-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--primary-blue), var(--accent-purple));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.4s ease;
+        }
+
+        .child-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-xl);
+            border-color: var(--primary-blue);
+        }
+
+        .child-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .dark-theme .child-card {
+            background: var(--dark-card);
+            border-color: var(--dark-border);
+        }
+
+        .child-card-header {
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .child-name {
+            font-size: 1.8rem;
+            font-weight: 900;
+            margin-bottom: 0.75rem;
+            color: var(--light-text);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .child-name::before {
+            content: '';
+            width: 12px;
+            height: 12px;
+            background: var(--secondary-green);
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 2s infinite;
+        }
+
+        .dark-theme .child-name {
+            color: var(--dark-text);
+        }
+
+        .child-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .child-tag {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .child-tag.age {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(37, 99, 235, 0.05));
+            color: var(--primary-blue);
+            border: 1px solid rgba(37, 99, 235, 0.2);
+        }
+
+        .child-tag.city {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(139, 92, 246, 0.05));
+            color: var(--accent-purple);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .child-tag.phone {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+            color: var(--secondary-green);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .child-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 2rem;
+        }
+
+        .child-actions .btn {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 6rem 2rem;
+            color: var(--light-text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .dark-theme .empty-state {
+            color: var(--dark-text-secondary);
+        }
+
+        .empty-state i {
+            font-size: 5rem;
+            margin-bottom: 2rem;
+            opacity: 0.3;
+            background: linear-gradient(135deg, var(--primary-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .empty-state h3 {
+            font-size: 2.2rem;
+            margin-bottom: 1.5rem;
+            font-weight: 900;
+            color: var(--light-text);
+        }
+
+        .dark-theme .empty-state h3 {
+            color: var(--dark-text);
+        }
+
+        /* QR Page - FIXED QR CENTERING */
+        .qr-container {
+            max-width: 900px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .qr-card {
+            background: var(--light-card);
+            border-radius: var(--radius-lg);
+            padding: 3.5rem;
+            margin: 3rem 0;
+            box-shadow: var(--shadow-xl);
+            border: 1px solid var(--light-border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .qr-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--primary-blue), var(--accent-purple));
+        }
+
+        .dark-theme .qr-card {
+            background: var(--dark-card);
+            border-color: var(--dark-border);
+        }
+
+        .qr-header {
+            margin-bottom: 3rem;
+        }
+
+        .qr-header h3 {
+            font-size: 2.2rem;
+            font-weight: 900;
+            margin-bottom: 0.5rem;
+            color: var(--light-text);
+        }
+
+        .dark-theme .qr-header h3 {
+            color: var(--dark-text);
+        }
+
+        .qr-data {
+            background: var(--light-bg);
+            border-radius: var(--radius);
+            padding: 2.5rem;
+            margin: 2.5rem 0;
+            text-align: left;
+            border: 1px solid var(--light-border);
+        }
+
+        .dark-theme .qr-data {
+            background: var(--dark-bg);
+            border-color: var(--dark-border);
+        }
+
+        .data-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 0;
+            border-bottom: 1px dashed var(--light-border);
+        }
+
+        .data-item:last-child {
+            border-bottom: none;
+        }
+
+        .dark-theme .data-item {
+            border-bottom-color: var(--dark-border);
+        }
+
+        .data-label {
+            font-weight: 700;
+            color: var(--light-text);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .dark-theme .data-label {
+            color: var(--dark-text);
+        }
+
+        .data-value {
+            font-weight: 600;
+            color: var(--light-text-secondary);
+            text-align: right;
+            max-width: 60%;
+            word-break: break-word;
+        }
+
+        .dark-theme .data-value {
+            color: var(--dark-text-secondary);
+        }
+
+        .qrcode-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            background-color: white;
+            border-radius: var(--radius);
+            margin: 2.5rem auto;
+            border: 1px solid var(--light-border);
+            max-width: 100%;
+            position: relative;
+            min-height: 350px;
+        }
+
+        .qrcode-container::before {
+            content: 'SafeChild QR';
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--light-card);
+            padding: 0.5rem 1.5rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--primary-blue);
+            border: 2px solid var(--light-border);
+            white-space: nowrap;
+            z-index: 1;
+        }
+
+        .dark-theme .qrcode-container::before {
+            background: var(--dark-card);
+            border-color: var(--dark-border);
+            color: #93c5fd;
+        }
+
+        #qrcode {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 300px;
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+        }
+
+        #qrcode canvas {
+            display: block;
+            margin: 0 auto;
+        }
+
+        /* Account Settings Page - FIXED TEXT COLORS */
+        .settings-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .settings-section {
+            background: var(--light-card);
+            border-radius: var(--radius-lg);
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--light-border);
+        }
+
+        .dark-theme .settings-section {
+            background: var(--dark-card);
+            border-color: var(--dark-border);
+        }
+
+        .settings-section h3 {
+            font-size: 1.8rem;
+            margin-bottom: 2rem;
+            color: var(--light-text);
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .dark-theme .settings-section h3 {
+            color: var(--dark-text);
+        }
+
+        .settings-info-item {
+            margin-bottom: 1.5rem;
+        }
+
+        .settings-info-label {
+            font-weight: 700;
+            color: var(--light-text-secondary);
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .dark-theme .settings-info-label {
+            color: var(--dark-text-secondary);
+        }
+
+        .settings-info-value {
+            font-weight: 600;
+            color: var(--light-text);
+            padding: 1rem;
+            background: var(--light-bg);
+            border-radius: var(--radius);
+            border: 1px solid var(--light-border);
+        }
+
+        .dark-theme .settings-info-value {
+            color: var(--dark-text);
+            background: var(--dark-bg);
+            border-color: var(--dark-border);
+        }
+
+        .danger-zone {
+            border: 2px solid var(--danger-red);
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), transparent);
+        }
+
+        .danger-zone h3 {
+            color: var(--danger-red);
+        }
+
+        /* Mobile Bottom Action Bar - REORDERED */
+        .mobile-bottom-bar {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--light-card);
+            border-top: 1px solid var(--light-border);
+            padding: 0.75rem 1rem;
+            z-index: 999;
+            box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .dark-theme .mobile-bottom-bar {
+            background: var(--dark-card);
+            border-top-color: var(--dark-border);
+        }
+
+        .mobile-bottom-actions {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        .mobile-bottom-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+            background: none;
+            border: none;
+            color: var(--light-text-secondary);
+            font-size: 0.8rem;
+            padding: 0.5rem;
+            border-radius: 12px;
+            min-width: 65px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .mobile-bottom-btn i {
+            font-size: 1.3rem;
+            transition: transform 0.2s ease;
+        }
+
+        .mobile-bottom-btn:hover i {
+            transform: translateY(-2px);
+        }
+
+        .mobile-bottom-btn.active {
+            color: var(--primary-blue);
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .dark-theme .mobile-bottom-btn.active {
+            color: #93c5fd;
+            background: rgba(37, 99, 235, 0.2);
+        }
+
+        .mobile-bottom-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            background: var(--primary-blue);
+            border-radius: 50%;
+        }
+
+        .dark-theme .mobile-bottom-btn.active::after {
+            background: #93c5fd;
+        }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 2000;
+        }
+
+        .toast {
+            background: var(--light-card);
+            color: var(--light-text);
+            padding: 1.25rem 1.75rem;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            min-width: 320px;
+            border-left: 6px solid var(--secondary-green);
+            animation: slideInRight 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
+            border: 1px solid var(--light-border);
+            backdrop-filter: blur(10px);
+        }
+
+        .dark-theme .toast {
+            background: var(--dark-card);
+            color: var(--dark-text);
+            border-color: var(--dark-border);
+        }
+
+        .toast.error {
+            border-left-color: var(--danger-red);
+        }
+
+        .toast.warning {
+            border-left-color: var(--warning-orange);
+        }
+
+        .toast i {
+            font-size: 1.5rem;
+        }
+
+        .toast.success i {
+            color: var(--secondary-green);
+        }
+
+        .toast.error i {
+            color: var(--danger-red);
+        }
+
+        .toast.warning i {
+            color: var(--warning-orange);
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--primary-blue);
+            border-right-color: var(--primary-blue);
+            animation: spin 1s linear infinite;
+            margin: 3rem auto;
+            position: relative;
+        }
+
+        .spinner::after {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            right: -4px;
+            bottom: -4px;
+            border: 4px solid transparent;
+            border-top-color: var(--accent-purple);
+            border-right-color: var(--accent-purple);
+            border-radius: 50%;
+            animation: spin 1.5s linear infinite reverse;
+        }
+
+        .dark-theme .spinner {
+            border-color: rgba(255, 255, 255, 0.1);
+            border-top-color: #93c5fd;
+            border-right-color: #93c5fd;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 4rem 2rem;
+            margin-top: 6rem;
+            color: var(--light-text-secondary);
+            border-top: 2px solid var(--light-border);
+            background: var(--light-card);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--light-border), transparent);
+        }
+
+        .dark-theme .footer {
+            color: var(--dark-text-secondary);
+            border-top-color: var(--dark-border);
+            background: var(--dark-card);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes shine {
+            0% {
+                transform: translateX(-100%) rotate(45deg);
+            }
+
+            100% {
+                transform: translateX(100%) rotate(45deg);
+            }
+        }
+
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(0.8);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: scale(1.2);
+                opacity: 0;
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .container {
+                padding: 0 1.25rem;
+            }
+
+            .hero h2 {
+                font-size: 3.2rem;
+            }
+
+            .hero p {
+                font-size: 1.2rem;
+            }
+
+            .dashboard-title {
+                font-size: 2.4rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding-top: 70px;
+                padding-bottom: 70px;
+            }
+
+            /* Hide desktop buttons when mobile bottom bar is active */
+            .nav-controls .btn:not(.theme-toggle) {
+                display: none;
+            }
+
+            .header {
+                height: 70px;
+                padding: 0.6rem 0;
+            }
+
+            .logo-icon {
+                width: 44px;
+                height: 44px;
+                font-size: 1.5rem;
+            }
+
+            .logo-text h1 {
+                font-size: 1.3rem;
+            }
+
+            .logo-text p {
+                font-size: 0.7rem;
+            }
+
+            .hero {
+                padding: 4rem 1rem 5rem;
+            }
+
+            .hero h2 {
+                font-size: 2.6rem;
+            }
+
+            .hero p {
+                font-size: 1.1rem;
+            }
+
+            .hero-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .hero-actions .btn {
+                width: 100%;
+                max-width: 300px;
+                border-radius: 12px;
+                padding: 1rem 1.5rem;
+                font-size: 1rem;
+            }
+
+            .steps {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+                margin: 4rem 0;
+            }
+
+            .steps::before {
+                display: none;
+            }
+
+            .step-card {
+                padding: 2rem 1.5rem;
+            }
+
+            .form-container {
+                padding: 2.5rem 1.5rem;
+                margin: 1rem auto;
+            }
+
+            .form-title {
+                font-size: 2rem;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                border-radius: 12px;
+                padding: 1rem 1.5rem;
+                min-height: 52px;
+            }
+
+            .dashboard-header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 1.5rem;
+            }
+
+            .dashboard-title {
+                font-size: 2rem;
+                text-align: center;
+            }
+
+            .dashboard-title::after {
+                left: 50%;
+                transform: translateX(-50%);
+            }
+
+            .children-grid {
+                grid-template-columns: 1fr;
+                gap: 1.75rem;
+            }
+
+            .child-card {
+                padding: 2rem;
+            }
+
+            .child-actions {
+                flex-direction: column;
+            }
+
+            .child-actions .btn {
+                width: 100%;
+            }
+
+            .qr-card {
+                padding: 2.5rem 1.5rem;
+                margin: 2rem 0;
+            }
+
+            .qr-data {
+                padding: 2rem 1.5rem;
+            }
+
+            .data-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+
+            .data-value {
+                max-width: 100%;
+                text-align: left;
+            }
+
+            .qrcode-container {
+                padding: 1.5rem;
+                min-height: 300px;
+            }
+
+            #qrcode {
+                min-height: 250px;
+                padding: 15px;
+            }
+
+            .settings-section {
+                padding: 2rem 1.5rem;
+            }
+
+            .mobile-bottom-bar {
+                display: block;
+            }
+
+            .user-info {
+                display: none;
+            }
+
+            .nav-controls {
+                gap: 0.5rem;
+            }
+
+            .password-toggle {
+                top: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 0 1rem;
+            }
+
+            .hero h2 {
+                font-size: 2.2rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            .form-container {
+                padding: 2rem 1.25rem;
+                margin: 0.5rem auto;
+            }
+
+            .form-title {
+                font-size: 1.8rem;
+            }
+
+            .child-card {
+                padding: 1.75rem;
+            }
+
+            .qr-card {
+                padding: 2rem 1.25rem;
+            }
+
+            .qrcode-container {
+                min-height: 280px;
+                padding: 1rem;
+            }
+
+            #qrcode {
+                min-height: 220px;
+                padding: 10px;
+            }
+
+            .btn-icon {
+                width: 44px;
+                height: 44px;
+            }
+
+            .theme-toggle {
+                width: 44px;
+                height: 44px;
+            }
+
+            .mobile-bottom-btn {
+                min-width: 55px;
+                padding: 0.5rem;
+                font-size: 0.75rem;
+            }
+
+            .mobile-bottom-btn i {
+                font-size: 1.2rem;
+            }
+
+            .toast {
+                min-width: auto;
+                max-width: calc(100vw - 4rem);
+                right: 1rem;
+                bottom: 1rem;
+            }
+
+            .password-toggle {
+                right: 1rem;
+                top: 1rem;
+            }
+        }
+
+        /* Utility */
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-1 {
+            margin-top: 1rem;
+        }
+
+        .mt-2 {
+            margin-top: 2rem;
+        }
+
+        .mt-3 {
+            margin-top: 3rem;
+        }
+
+        .mb-1 {
+            margin-bottom: 1rem;
+        }
+
+        .mb-2 {
+            margin-bottom: 2rem;
+        }
+
+        .mb-3 {
+            margin-bottom: 3rem;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .loading {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .text-small {
+            font-size: 0.9rem;
+        }
+
+        .flex {
+            display: flex;
+        }
+
+        .flex-col {
+            flex-direction: column;
+        }
+
+        .items-center {
+            align-items: center;
+        }
+
+        .justify-center {
+            justify-content: center;
+        }
+
+        .gap-1 {
+            gap: 0.5rem;
+        }
+
+        .gap-2 {
+            gap: 1rem;
+        }
+
+        .gap-3 {
+            gap: 1.5rem;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container header-content">
+            <a href="#" class="logo" onclick="showPage('home'); return false;">
+                <div class="logo-icon">
+                    <i class="fas fa-qrcode"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>SafeChild QR</h1>
+                    <p>Scan to Reunite</p>
+                </div>
+            </a>
+            <div class="nav-controls">
+                <div id="userMenu" class="user-menu hidden">
+                    <div class="user-info">
+                        <div class="user-name" id="userName">Parent</div>
+                    </div>
+                    <div class="user-avatar" id="userAvatar">P</div>
+                    <button class="btn btn-icon" onclick="logout()" title="Logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                    <button class="btn btn-icon" onclick="showPage('settings')" title="Settings">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <button id="dashboardBtn" class="btn btn-icon hidden" onclick="showPage('dashboard')"
+                        title="Dashboard">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </button>
+                </div>
+                <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle Theme">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Mobile Bottom Action Bar - REORDERED -->
+    <div class="mobile-bottom-bar" id="mobileBottomBar">
+        <div class="mobile-bottom-actions">
+            <button class="mobile-bottom-btn" onclick="showPage('home')">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </button>
+            <button class="mobile-bottom-btn" onclick="showPage('dashboard')" id="mobileDashboardBtn">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </button>
+            <button class="mobile-bottom-btn" onclick="showPage('settings')" id="mobileSettingsBtn">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </button>
+            <button class="mobile-bottom-btn" onclick="logout()" id="mobileLogoutBtn">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Pages -->
+    <main>
+        <!-- Home Page -->
+        <section id="home" class="page active">
+            <div class="container">
+                <div class="hero">
+                    <h2>Keep Your Children Safe</h2>
+                    <p>SafeChild QR provides secure, offline QR codes for your children. Print, attach, and have peace
+                        of mind knowing help is just a scan away.</p>
+                    <div class="hero-actions">
+                        <button id="homeDashboardBtn" class="btn btn-primary btn-lg hidden"
+                            onclick="showPage('dashboard')">
+                            <span class="btn-text">
+                                <i class="fas fa-tachometer-alt"></i> Parent Dashboard
+                            </span>
+                            <div class="btn-spinner"></div>
+                        </button>
+                        <button id="homeSignupBtn" class="btn btn-primary btn-lg" onclick="showPage('signup')">
+                            <span class="btn-text">
+                                <i class="fas fa-user-plus"></i> Sign Up Now
+                            </span>
+                            <div class="btn-spinner"></div>
+                        </button>
+                        <button id="homeLoginBtn" class="btn btn-outline btn-lg" onclick="showPage('login')">
+                            <span class="btn-text">
+                                <i class="fas fa-sign-in-alt"></i> Login
+                            </span>
+                            <div class="btn-spinner"></div>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="text-center mb-3">How It Works</h2>
+                    <div class="steps">
+                        <div class="step-card">
+                            <div class="step-icon">
+                                <i class="fas fa-user-plus"></i>
+                            </div>
+                            <h3>1. Create Account</h3>
+                            <p>Sign up securely as a parent. Your data is encrypted and protected.</p>
+                        </div>
+                        <div class="step-card">
+                            <div class="step-icon">
+                                <i class="fas fa-child"></i>
+                            </div>
+                            <h3>2. Add Your Child</h3>
+                            <p>Enter your child's information and emergency contact details.</p>
+                        </div>
+                        <div class="step-card">
+                            <div class="step-icon">
+                                <i class="fas fa-qrcode"></i>
+                            </div>
+                            <h3>3. Generate QR</h3>
+                            <p>Create an offline QR code with all emergency information embedded.</p>
+                        </div>
+                        <div class="step-card">
+                            <div class="step-icon">
+                                <i class="fas fa-print"></i>
+                            </div>
+                            <h3>4. Print & Attach</h3>
+                            <p>Print the QR code and attach it to your child's clothing or backpack.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="privacy-note">
+                    <h3><i class="fas fa-shield-alt"></i> 100% Offline & Private</h3>
+                    <p>All data is embedded in the QR code itself. No internet required to scan. No personal information
+                        stored online. Complete privacy and security.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Signup Page -->
+        <section id="signup" class="page">
+            <div class="container">
+                <div class="form-container">
+                    <h2 class="form-title">Create Parent Account</h2>
+                    <form id="signupForm">
+                        <div class="form-group">
+                            <label class="form-label" for="signupName">
+                                <i class="fas fa-user"></i> Full Name *
+                            </label>
+                            <input type="text" id="signupName" class="form-input" placeholder="John Doe" required>
+                            <small class="form-text">This name will be displayed in your account</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="signupPhone">
+                                <i class="fas fa-phone"></i> Mobile Number *
+                            </label>
+                            <input type="tel" id="signupPhone" class="form-input" placeholder="+1234567890" required>
+                            <small class="form-text">We'll use this for account verification</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="signupPassword">
+                                <i class="fas fa-lock"></i> Password *
+                            </label>
+                            <div style="position: relative;">
+                                <input type="password" id="signupPassword" class="form-input"
+                                    placeholder="Minimum 6 characters" required minlength="6">
+                                <button type="button" class="password-toggle" id="toggleSignupPassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="signupConfirmPassword">
+                                <i class="fas fa-lock"></i> Confirm Password *
+                            </label>
+                            <div style="position: relative;">
+                                <input type="password" id="signupConfirmPassword" class="form-input"
+                                    placeholder="Confirm your password" required>
+                                <button type="button" class="password-toggle" id="toggleSignupConfirmPassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-outline" onclick="showPage('home')">
+                                <span class="btn-text">Back</span>
+                            </button>
+                            <button type="submit" class="btn btn-primary" id="signupBtn">
+                                <span class="btn-text">
+                                    <i class="fas fa-user-plus"></i> Create Account
+                                </span>
+                                <div class="btn-spinner"></div>
+                            </button>
+                        </div>
+                        <div class="form-switch">
+                            <p>Already have an account? <a href="#" onclick="showPage('login'); return false;">Login
+                                    here</a></p>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- Login Page -->
+        <section id="login" class="page">
+            <div class="container">
+                <div class="form-container">
+                    <h2 class="form-title">Parent Login</h2>
+                    <form id="loginForm">
+                        <div class="form-group">
+                            <label class="form-label" for="loginPhone">
+                                <i class="fas fa-phone"></i> Mobile Number *
+                            </label>
+                            <input type="tel" id="loginPhone" class="form-input" placeholder="+1234567890" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="loginPassword">
+                                <i class="fas fa-lock"></i> Password *
+                            </label>
+                            <div style="position: relative;">
+                                <input type="password" id="loginPassword" class="form-input"
+                                    placeholder="Enter your password" required>
+                                <button type="button" class="password-toggle" id="toggleLoginPassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-outline" onclick="showPage('home')">
+                                <span class="btn-text">Back</span>
+                            </button>
+                            <button type="submit" class="btn btn-primary" id="loginBtn">
+                                <span class="btn-text">
+                                    <i class="fas fa-sign-in-alt"></i> Login
+                                </span>
+                                <div class="btn-spinner"></div>
+                            </button>
+                        </div>
+                        <div class="form-switch">
+                            <p>Don't have an account? <a href="#" onclick="showPage('signup'); return false;">Sign up
+                                    here</a></p>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- Parent Dashboard -->
+        <section id="dashboard" class="page">
+            <div class="container">
+                <div class="dashboard-header">
+                    <h2 class="dashboard-title">My Children</h2>
+                    <button class="btn btn-primary" onclick="showPage('addChild')" id="addChildBtn">
+                        <span class="btn-text">
+                            <i class="fas fa-plus"></i> Add New Child
+                        </span>
+                    </button>
+                </div>
+
+                <div class="section">
+                    <div id="loadingChildren" class="spinner"></div>
+                    <div id="childrenList" class="children-grid hidden">
+                        <!-- Children cards will be inserted here by JavaScript -->
+                    </div>
+                    <div id="emptyState" class="empty-state hidden">
+                        <i class="fas fa-child"></i>
+                        <h3>No Children Added Yet</h3>
+                        <p>Add your first child to create a SafeChild QR code for emergency situations.</p>
+                        <button class="btn btn-primary mt-3" onclick="showPage('addChild')">
+                            <span class="btn-text">Add Your First Child</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Add Child Form -->
+        <section id="addChild" class="page">
+            <div class="container">
+                <div class="form-container">
+                    <h2 class="form-title">Add Child Information</h2>
+                    <form id="childForm">
+                        <div class="form-group">
+                            <label class="form-label" for="childName">
+                                <i class="fas fa-child"></i> Child's Full Name *
+                            </label>
+                            <input type="text" id="childName" class="form-input" placeholder="e.g., Alex Johnson"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="childAge">
+                                <i class="fas fa-birthday-cake"></i> Age *
+                            </label>
+                            <input type="number" id="childAge" class="form-input" placeholder="e.g., 7" min="0" max="18"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="childCity">
+                                <i class="fas fa-city"></i> City *
+                            </label>
+                            <input type="text" id="childCity" class="form-input" placeholder="e.g., New York" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="parentPhoneOnline">
+                                <i class="fas fa-phone"></i> Emergency Phone Number *
+                            </label>
+                            <input type="tel" id="parentPhoneOnline" class="form-input" placeholder="+1234567890"
+                                required>
+                            <small class="form-text">This number will be displayed when QR is scanned</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="emergencyMessage">
+                                <i class="fas fa-exclamation-circle"></i> Emergency Message *
+                            </label>
+                            <textarea id="emergencyMessage" class="form-input" rows="3"
+                                placeholder="e.g., This child may be lost. Please help contact parents immediately."
+                                required></textarea>
+                            <small class="form-text">This message will be shown in the QR scan result</small>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-outline" onclick="showPage('dashboard')">
+                                <span class="btn-text">Cancel</span>
+                            </button>
+                            <button type="submit" class="btn btn-primary" id="submitBtn">
+                                <span class="btn-text">
+                                    <i class="fas fa-save"></i> Save Child
+                                </span>
+                                <div class="btn-spinner"></div>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- QR Preview & Download -->
+        <section id="qrPage" class="page">
+            <div class="container">
+                <div class="qr-container">
+                    <h2 class="text-center">SafeChild QR Code</h2>
+                    <p class="text-center">This QR code contains all emergency information and works completely offline.
+                    </p>
+
+                    <div class="qr-card">
+                        <div class="qr-header">
+                            <h3 id="qrChildName">Child Name</h3>
+                            <p id="qrChildCity" class="text-small">City</p>
+                        </div>
+
+                        <div class="qr-data">
+                            <div class="data-item">
+                                <span class="data-label">
+                                    <i class="fas fa-child"></i> Child's Name
+                                </span>
+                                <span class="data-value" id="dataChildName">-</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">
+                                    <i class="fas fa-birthday-cake"></i> Age
+                                </span>
+                                <span class="data-value" id="dataChildAge">-</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">
+                                    <i class="fas fa-city"></i> City
+                                </span>
+                                <span class="data-value" id="dataChildCity">-</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">
+                                    <i class="fas fa-phone"></i> Emergency Phone
+                                </span>
+                                <span class="data-value" id="dataParentPhone">-</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">
+                                    <i class="fas fa-exclamation-circle"></i> Emergency Message
+                                </span>
+                                <span class="data-value" id="dataEmergencyMessage">-</span>
+                            </div>
+                        </div>
+
+                        <div class="qrcode-container">
+                            <div id="qrcode">
+                                <!-- QR code will be generated here -->
+                            </div>
+                        </div>
+
+                        <button class="btn btn-secondary mt-2" onclick="downloadQR()" id="downloadBtn">
+                            <span class="btn-text">
+                                <i class="fas fa-download"></i> Download QR Code
+                            </span>
+                            <div class="btn-spinner"></div>
+                        </button>
+
+                        <div class="mt-3">
+                            <button class="btn btn-outline" onclick="showPage('dashboard')">
+                                <span class="btn-text">
+                                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="qr-instructions">
+                        <h4><i class="fas fa-info-circle"></i> Printing Instructions</h4>
+                        <ul style="padding-left: 1.5rem; margin-top: 0.5rem;">
+                            <li><strong>Print Quality:</strong> Use high-quality paper or sticker</li>
+                            <li><strong>Size:</strong> Minimum 2x2 inches (5x5 cm) for easy scanning</li>
+                            <li><strong>Placement:</strong> Attach to clothing, backpack, or wristband</li>
+                            <li><strong>Lamination:</strong> Laminate for waterproof protection</li>
+                            <li><strong>Test Scan:</strong> Always test with phone camera before use</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Account Settings Page - FIXED TEXT COLORS -->
+        <section id="settings" class="page">
+            <div class="container">
+                <div class="settings-container">
+                    <h2 class="dashboard-title">Account Settings</h2>
+
+                    <div class="settings-section mt-3">
+                        <h3><i class="fas fa-user-cog"></i>Information</h3>
+                        <div class="settings-info-item">
+                            <div class="settings-info-label">Account Name</div>
+                            <div class="settings-info-value" id="settingsUserName">Loading...</div>
+                        </div>
+                        <div class="settings-info-item">
+                            <div class="settings-info-label">Registered Phone</div>
+                            <div class="settings-info-value" id="settingsUserPhone">Loading...</div>
+                        </div>
+                        <div class="settings-info-item">
+                            <div class="settings-info-label">Account Created</div>
+                            <div class="settings-info-value" id="settingsUserCreated">Loading...</div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section mt-3">
+                        <h3><i class="fas fa-lock"></i> Change Password</h3>
+                        <form id="changePasswordForm">
+                            <div class="form-group">
+                                <label class="form-label" for="currentPassword">Current Password *</label>
+                                <div style="position: relative;">
+                                    <input type="password" id="currentPassword" class="form-input"
+                                        placeholder="Enter current password" required>
+                                    <button type="button" class="password-toggle" id="toggleCurrentPassword">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="newPassword">New Password *</label>
+                                <div style="position: relative;">
+                                    <input type="password" id="newPassword" class="form-input"
+                                        placeholder="Minimum 6 characters" required minlength="6">
+                                    <button type="button" class="password-toggle" id="toggleNewPassword">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="confirmNewPassword">Confirm New Password *</label>
+                                <div style="position: relative;">
+                                    <input type="password" id="confirmNewPassword" class="form-input"
+                                        placeholder="Confirm new password" required>
+                                    <button type="button" class="password-toggle" id="toggleConfirmNewPassword">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="changePasswordBtn">
+                                <span class="btn-text">
+                                    <i class="fas fa-key"></i> Change Password
+                                </span>
+                                <div class="btn-spinner"></div>
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="settings-section danger-zone mt-3">
+                        <h3><i class="fas fa-exclamation-triangle"></i> Danger Zone</h3>
+                        <p class="mb-2"><strong>Warning:</strong> These actions are irreversible. Deleting your account
+                            will permanently remove all your children's data and QR codes.</p>
+
+                        <div class="form-group">
+                            <label class="form-label" for="deleteConfirmText">
+                                Type "DELETE" to confirm account deletion
+                            </label>
+                            <input type="text" id="deleteConfirmText" class="form-input"
+                                placeholder="Type DELETE to confirm">
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="btn btn-outline" onclick="showPage('dashboard')">
+                                <span class="btn-text">Cancel</span>
+                            </button>
+                            <button class="btn btn-danger" onclick="deleteAccount()" id="deleteAccountBtn">
+                                <span class="btn-text">
+                                    <i class="fas fa-trash"></i> Delete Account & All Data
+                                </span>
+                                <div class="btn-spinner"></div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>SafeChild QR &copy; <span id="currentYear"></span> | "Scan to Reunite"</p>
+            <p style="font-size: 0.9rem; margin-top: 0.5rem;">Offline QR System | 100% Private | No Internet Required
+            </p>
+            <p style="font-size: 0.8rem; margin-top: 0.5rem; color: var(--light-text-secondary);">
+                <i class="fas fa-shield-alt"></i> End-to-End Encryption | GDPR Compliant | HIPAA Ready
+            </p>
+        </div>
+    </footer>
+
+    <!-- Firebase Configuration -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyD2cDI8o5j-iNDG8ay3MHFxaIwaQfEoKeo",
+            authDomain: "safechildqr.firebaseapp.com",
+            projectId: "safechildqr",
+            storageBucket: "safechildqr.firebasestorage.app",
+            messagingSenderId: "188357082132",
+            appId: "1:188357082132:web:6fa982e3c56506a99afb01"
+        };
+
+        try {
+            firebase.initializeApp(firebaseConfig);
+            window.auth = firebase.auth();
+            window.db = firebase.firestore();
+            console.log("Firebase initialized successfully");
+
+            db.enablePersistence()
+                .catch((err) => {
+                    console.log("Firebase persistence error: ", err.code);
+                });
+
+        } catch (error) {
+            console.error("Firebase initialization error:", error);
+            showToast("Database connection failed. Please refresh the page.", "error");
+        }
+    </script>
+
+    <!-- Application JavaScript -->
+    <script>
+        // DOM Elements
+        const themeToggle = document.getElementById('themeToggle');
+        const toastContainer = document.getElementById('toastContainer');
+        const childrenList = document.getElementById('childrenList');
+        const emptyState = document.getElementById('emptyState');
+        const loadingChildren = document.getElementById('loadingChildren');
+        const userMenu = document.getElementById('userMenu');
+        const userAvatar = document.getElementById('userAvatar');
+        const userName = document.getElementById('userName');
+        const dashboardBtn = document.getElementById('dashboardBtn');
+        const homeDashboardBtn = document.getElementById('homeDashboardBtn');
+        const homeSignupBtn = document.getElementById('homeSignupBtn');
+        const homeLoginBtn = document.getElementById('homeLoginBtn');
+        const currentYear = document.getElementById('currentYear');
+        const mobileBottomBar = document.getElementById('mobileBottomBar');
+
+        // State
+        let currentUser = null;
+        let currentQRChildId = null;
+        let currentChildData = null;
+        let currentPage = 'home';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function () {
+            console.log("SafeChild QR initialized");
+
+            // Set current year
+            currentYear.textContent = new Date().getFullYear();
+
+            // Theme initialization
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            applyTheme(savedTheme);
+
+            // Initialize password toggles
+            initializePasswordToggles();
+
+            // Check authentication state
+            if (typeof auth !== 'undefined') {
+                auth.onAuthStateChanged((user) => {
+                    console.log("Auth state changed:", user ? "Logged in" : "Logged out");
+
+                    if (user) {
+                        currentUser = user;
+                        updateUserUI(user);
+                        updateNavigationUI(true);
+                        showPage('dashboard');
+                        loadChildren();
+                        loadUserSettings();
+                    } else {
+                        currentUser = null;
+                        updateUserUI(null);
+                        updateNavigationUI(false);
+                        showPage('home');
+                    }
+                });
+            } else {
+                console.error("Firebase Auth not loaded");
+                showToast("Authentication system not loaded. Please refresh.", "error");
+            }
+
+            // Form submissions
+            document.getElementById('signupForm')?.addEventListener('submit', function (e) {
+                e.preventDefault();
+                signup();
+            });
+
+            document.getElementById('loginForm')?.addEventListener('submit', function (e) {
+                e.preventDefault();
+                login();
+            });
+
+            document.getElementById('childForm')?.addEventListener('submit', function (e) {
+                e.preventDefault();
+                saveChild();
+            });
+
+            document.getElementById('changePasswordForm')?.addEventListener('submit', function (e) {
+                e.preventDefault();
+                changePassword();
+            });
+
+            // Update mobile bottom bar
+            updateMobileBottomBar();
+        });
+
+        // Theme Functions
+        function applyTheme(theme) {
+            const isDark = theme === 'dark';
+            document.body.classList.toggle('dark-theme', isDark);
+            localStorage.setItem('theme', theme);
+            updateThemeIcon();
+        }
+
+        function toggleTheme() {
+            const current = localStorage.getItem('theme') || 'light';
+            const newTheme = current === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+            showToast(`${newTheme.charAt(0).toUpperCase() + newTheme.slice(1)} Mode`, 'success');
+        }
+
+        function updateThemeIcon() {
+            const current = localStorage.getItem('theme') || 'light';
+            const isDark = current === 'dark';
+            themeToggle.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+        }
+
+        themeToggle.addEventListener('click', toggleTheme);
+
+        // Password Toggle Functions
+        function initializePasswordToggles() {
+            // Signup page toggles
+            const toggleSignupPassword = document.getElementById('toggleSignupPassword');
+            const toggleSignupConfirmPassword = document.getElementById('toggleSignupConfirmPassword');
+
+            if (toggleSignupPassword) {
+                toggleSignupPassword.addEventListener('click', function () {
+                    const passwordInput = document.getElementById('signupPassword');
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+                });
+            }
+
+            if (toggleSignupConfirmPassword) {
+                toggleSignupConfirmPassword.addEventListener('click', function () {
+                    const passwordInput = document.getElementById('signupConfirmPassword');
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+                });
+            }
+
+            // Login page toggle
+            const toggleLoginPassword = document.getElementById('toggleLoginPassword');
+            if (toggleLoginPassword) {
+                toggleLoginPassword.addEventListener('click', function () {
+                    const passwordInput = document.getElementById('loginPassword');
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+                });
+            }
+
+            // Settings page toggles
+            const toggleCurrentPassword = document.getElementById('toggleCurrentPassword');
+            const toggleNewPassword = document.getElementById('toggleNewPassword');
+            const toggleConfirmNewPassword = document.getElementById('toggleConfirmNewPassword');
+
+            if (toggleCurrentPassword) {
+                toggleCurrentPassword.addEventListener('click', function () {
+                    const passwordInput = document.getElementById('currentPassword');
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+                });
+            }
+
+            if (toggleNewPassword) {
+                toggleNewPassword.addEventListener('click', function () {
+                    const passwordInput = document.getElementById('newPassword');
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+                });
+            }
+
+            if (toggleConfirmNewPassword) {
+                toggleConfirmNewPassword.addEventListener('click', function () {
+                    const passwordInput = document.getElementById('confirmNewPassword');
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+                });
+            }
+        }
+
+        // User Management
+        function updateUserUI(user) {
+            if (user) {
+                userMenu.classList.remove('hidden');
+                const displayName = user.displayName || 'Parent';
+                userName.textContent = displayName;
+                userAvatar.textContent = displayName.charAt(0).toUpperCase();
+
+                // Update settings page
+                document.getElementById('settingsUserName').textContent = displayName;
+                if (user.phoneNumber) {
+                    document.getElementById('settingsUserPhone').textContent = user.phoneNumber;
+                }
+                if (user.metadata && user.metadata.creationTime) {
+                    const date = new Date(user.metadata.creationTime);
+                    document.getElementById('settingsUserCreated').textContent = date.toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                }
+            } else {
+                userMenu.classList.add('hidden');
+            }
+        }
+
+        function updateNavigationUI(isLoggedIn) {
+            if (isLoggedIn) {
+                dashboardBtn.classList.remove('hidden');
+                homeDashboardBtn.classList.remove('hidden');
+                homeSignupBtn.classList.add('hidden');
+                homeLoginBtn.classList.add('hidden');
+                mobileBottomBar.classList.remove('hidden');
+            } else {
+                dashboardBtn.classList.add('hidden');
+                homeDashboardBtn.classList.add('hidden');
+                homeSignupBtn.classList.remove('hidden');
+                homeLoginBtn.classList.remove('hidden');
+                mobileBottomBar.classList.add('hidden');
+            }
+        }
+
+        async function loadUserSettings() {
+            if (!currentUser) return;
+
+            try {
+                const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    document.getElementById('settingsUserPhone').textContent = userData.phone || 'Not set';
+
+                    if (userData.createdAt) {
+                        const date = userData.createdAt.toDate();
+                        document.getElementById('settingsUserCreated').textContent = date.toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error("Error loading user settings:", error);
+            }
+        }
+
+        // Update mobile bottom bar active state
+        function updateMobileBottomBar() {
+            document.querySelectorAll('.mobile-bottom-btn').forEach(btn => {
+                btn.classList.remove('active');
+                const onclick = btn.getAttribute('onclick');
+                if (onclick && onclick.includes(currentPage)) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        // Button Loading State Functions - IMPROVED SPINNER
+        function setButtonLoading(buttonId, isLoading) {
+            const button = document.getElementById(buttonId);
+            if (!button) return;
+
+            if (isLoading) {
+                button.classList.add('btn-loading');
+                button.disabled = true;
+            } else {
+                button.classList.remove('btn-loading');
+                button.disabled = false;
+            }
+        }
+
+        // Form Validation Helper
+        function validateForm(formData) {
+            const errors = [];
+
+            // Check for empty required fields
+            Object.entries(formData).forEach(([key, value]) => {
+                if (!value || value.toString().trim() === '') {
+                    errors.push(`${key.replace(/([A-Z])/g, ' $1').toLowerCase()} is required`);
+                }
+            });
+
+            // Specific validations
+            if (formData.age && (formData.age < 0 || formData.age > 18 || isNaN(formData.age))) {
+                errors.push('Age must be between 0 and 18');
+            }
+
+            if (formData.parentPhoneOnline && !/^[\+]?[0-9\s\-\(\)]{10,}$/.test(formData.parentPhoneOnline)) {
+                errors.push('Please enter a valid phone number');
+            }
+
+            return errors;
+        }
+
+        // SIGNUP FUNCTION with better error handling
+        async function signup() {
+            const name = document.getElementById('signupName').value.trim();
+            const phone = document.getElementById('signupPhone').value.trim();
+            const password = document.getElementById('signupPassword').value;
+            const confirmPassword = document.getElementById('signupConfirmPassword').value;
+
+            // Validation
+            const errors = validateForm({ name, phone, password, confirmPassword });
+
+            if (password !== confirmPassword) {
+                errors.push('Passwords do not match');
+            }
+
+            if (password.length < 6) {
+                errors.push('Password must be at least 6 characters');
+            }
+
+            if (errors.length > 0) {
+                showToast(errors[0], 'error');
+                return;
+            }
+
+            try {
+                setButtonLoading('signupBtn', true);
+
+                const email = phone.replace(/[^0-9]/g, '') + '@safechildqr.app';
+
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+
+                // Update profile with name
+                await user.updateProfile({ displayName: name });
+
+                // Save user data to Firestore
+                await db.collection('users').doc(user.uid).set({
+                    name: name,
+                    phone: phone,
+                    email: email,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                showToast('Account created successfully!', 'success');
+                setButtonLoading('signupBtn', false);
+
+            } catch (error) {
+                console.error('Signup error:', error);
+                showToast(getAuthErrorMessage(error), 'error');
+                setButtonLoading('signupBtn', false);
+            }
+        }
+
+        // LOGIN FUNCTION with error handling
+        async function login() {
+            const phone = document.getElementById('loginPhone').value.trim();
+            const password = document.getElementById('loginPassword').value;
+
+            // Validation
+            const errors = validateForm({ phone, password });
+            if (errors.length > 0) {
+                showToast(errors[0], 'error');
+                return;
+            }
+
+            try {
+                setButtonLoading('loginBtn', true);
+
+                const email = phone.replace(/[^0-9]/g, '') + '@safechildqr.app';
+                await auth.signInWithEmailAndPassword(email, password);
+
+                showToast('Logged in successfully!', 'success');
+                setButtonLoading('loginBtn', false);
+
+            } catch (error) {
+                console.error('Login error:', error);
+                showToast(getAuthErrorMessage(error), 'error');
+                setButtonLoading('loginBtn', false);
+            }
+        }
+
+        // CHANGE PASSWORD FUNCTION
+        async function changePassword() {
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+
+            // Validation
+            const errors = validateForm({ currentPassword, newPassword, confirmNewPassword });
+
+            if (newPassword !== confirmNewPassword) {
+                errors.push('New passwords do not match');
+            }
+
+            if (newPassword.length < 6) {
+                errors.push('New password must be at least 6 characters');
+            }
+
+            if (errors.length > 0) {
+                showToast(errors[0], 'error');
+                return;
+            }
+
+            try {
+                setButtonLoading('changePasswordBtn', true);
+
+                // Reauthenticate user first
+                const user = auth.currentUser;
+                const email = user.email;
+
+                // Reauthenticate with current password
+                const credential = firebase.auth.EmailAuthProvider.credential(email, currentPassword);
+                await user.reauthenticateWithCredential(credential);
+
+                // Update password
+                await user.updatePassword(newPassword);
+
+                // Clear form
+                document.getElementById('changePasswordForm').reset();
+
+                showToast('Password changed successfully!', 'success');
+                setButtonLoading('changePasswordBtn', false);
+
+            } catch (error) {
+                console.error('Change password error:', error);
+                showToast(getAuthErrorMessage(error), 'error');
+                setButtonLoading('changePasswordBtn', false);
+            }
+        }
+
+        // DELETE ACCOUNT FUNCTION
+        async function deleteAccount() {
+            const confirmText = document.getElementById('deleteConfirmText').value;
+
+            if (confirmText !== 'DELETE') {
+                showToast('Please type "DELETE" to confirm account deletion', 'error');
+                return;
+            }
+
+            if (!confirm('⚠️ WARNING: This will permanently delete your account and ALL your children\'s data. This action cannot be undone. Are you absolutely sure?')) {
+                return;
+            }
+
+            try {
+                setButtonLoading('deleteAccountBtn', true);
+
+                const user = auth.currentUser;
+
+                // First, delete all children data
+                const childrenSnapshot = await db.collection('children')
+                    .where('parentId', '==', user.uid)
+                    .get();
+
+                const batch = db.batch();
+                childrenSnapshot.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+
+                await batch.commit();
+
+                // Delete user data from Firestore
+                await db.collection('users').doc(user.uid).delete();
+
+                // Delete the user account
+                await user.delete();
+
+                showToast('Account and all data deleted successfully', 'success');
+                setButtonLoading('deleteAccountBtn', false);
+
+                // Redirect to home page
+                showPage('home');
+
+            } catch (error) {
+                console.error('Delete account error:', error);
+                showToast(getAuthErrorMessage(error), 'error');
+                setButtonLoading('deleteAccountBtn', false);
+            }
+        }
+
+        async function logout() {
+            try {
+                await auth.signOut();
+                showToast('Logged out successfully', 'success');
+                showPage('home');
+            } catch (error) {
+                console.error('Logout error:', error);
+                showToast('Error logging out', 'error');
+            }
+        }
+
+        // Improved error message function
+        function getAuthErrorMessage(error) {
+            const messages = {
+                'auth/email-already-in-use': 'Account already exists with this phone number',
+                'auth/invalid-email': 'Invalid phone number format',
+                'auth/weak-password': 'Password is too weak (minimum 6 characters)',
+                'auth/user-not-found': 'No account found with this phone number',
+                'auth/wrong-password': 'Incorrect password',
+                'auth/too-many-requests': 'Too many attempts. Please try again later',
+                'auth/network-request-failed': 'Network error. Check your internet connection',
+                'auth/requires-recent-login': 'Please log in again to perform this action',
+                'auth/user-mismatch': 'Credential does not match the current user',
+                'auth/operation-not-allowed': 'This operation is not allowed',
+                'auth/provider-already-linked': 'Provider is already linked',
+                'auth/credential-already-in-use': 'Credential is already in use'
+            };
+
+            return messages[error.code] || 'An error occurred. Please try again.';
+        }
+
+        // Page Navigation
+        function showPage(pageId) {
+            // Hide all pages
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+
+            // Show target page
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
+                currentPage = pageId;
+                window.scrollTo(0, 0);
+
+                // Update mobile bottom bar
+                updateMobileBottomBar();
+
+                // Special handling for certain pages
+                if (pageId === 'dashboard') {
+                    if (currentUser) {
+                        loadChildren();
+                    } else {
+                        showPage('login');
+                    }
+                } else if (pageId === 'settings' && currentUser) {
+                    loadUserSettings();
+                } else if (pageId === 'addChild') {
+                    resetForm();
+                }
+            }
+        }
+
+        // Child Management
+        function generateChildId() {
+            return 'SC' + Date.now().toString(36) + Math.random().toString(36).substr(2, 6).toUpperCase();
+        }
+
+        async function saveChild() {
+            if (!currentUser) {
+                showToast('Please login first', 'error');
+                showPage('login');
+                return;
+            }
+
+            const childData = {
+                name: document.getElementById('childName').value.trim(),
+                age: parseInt(document.getElementById('childAge').value),
+                city: document.getElementById('childCity').value.trim(),
+                parentPhoneOnline: document.getElementById('parentPhoneOnline').value.trim(),
+                emergencyMessage: document.getElementById('emergencyMessage').value.trim(),
+                parentId: currentUser.uid,
+                parentName: currentUser.displayName || 'Parent',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            // Validation
+            const errors = validateForm(childData);
+            if (errors.length > 0) {
+                showToast(errors[0], 'error');
+                return;
+            }
+
+            try {
+                setButtonLoading('submitBtn', true);
+
+                const childId = generateChildId();
+                childData.childId = childId;
+
+                await db.collection('children').doc(childId).set(childData);
+                showToast('Child added successfully', 'success');
+                setButtonLoading('submitBtn', false);
+                showPage('dashboard');
+
+            } catch (error) {
+                console.error('Save child error:', error);
+                showToast('Error saving child data: ' + error.message, 'error');
+                setButtonLoading('submitBtn', false);
+            }
+        }
+
+        async function deleteChild(childId) {
+            if (!confirm('Are you sure you want to remove this child? This action cannot be undone.')) {
+                return;
+            }
+
+            try {
+                // Show loading state on the specific child card
+                const childCard = document.querySelector(`[data-child-id="${childId}"]`);
+                if (childCard) {
+                    childCard.classList.add('loading');
+                }
+
+                await db.collection('children').doc(childId).delete();
+                showToast('Child removed successfully', 'success');
+                loadChildren();
+
+            } catch (error) {
+                console.error('Delete child error:', error);
+                showToast('Error removing child', 'error');
+
+                // Remove loading state
+                const childCard = document.querySelector(`[data-child-id="${childId}"]`);
+                if (childCard) {
+                    childCard.classList.remove('loading');
+                }
+            }
+        }
+
+        async function loadChildren() {
+            if (!currentUser) return;
+
+            try {
+                childrenList.classList.add('hidden');
+                emptyState.classList.add('hidden');
+                loadingChildren.classList.remove('hidden');
+
+                const querySnapshot = await db.collection('children')
+                    .where('parentId', '==', currentUser.uid)
+                    .orderBy('createdAt', 'desc')
+                    .get();
+
+                if (querySnapshot.empty) {
+                    childrenList.innerHTML = '';
+                    emptyState.classList.remove('hidden');
+                    childrenList.classList.add('hidden');
+                } else {
+                    childrenList.innerHTML = '';
+                    querySnapshot.forEach((doc) => {
+                        const child = doc.data();
+                        const childId = doc.id;
+
+                        const childCard = `
+                            <div class="child-card" data-child-id="${childId}">
+                                <div class="child-card-header">
+                                    <div class="child-name">
+                                        ${escapeHtml(child.name)}
+                                    </div>
+                                </div>
+                                <div class="child-info">
+                                    <span class="child-tag age">
+                                        <i class="fas fa-birthday-cake"></i> Age ${child.age}
+                                    </span>
+                                    <span class="child-tag city">
+                                        <i class="fas fa-city"></i> ${escapeHtml(child.city)}
+                                    </span>
+                                    <span class="child-tag phone">
+                                        <i class="fas fa-phone"></i> ${escapeHtml(child.parentPhoneOnline)}
+                                    </span>
+                                </div>
+                                <div class="child-card-body">
+                                    <p style="color: var(--light-text-secondary); font-size: 0.95rem;">
+                                        <i class="fas fa-exclamation-circle"></i> 
+                                        ${escapeHtml(child.emergencyMessage || 'Emergency contact information')}
+                                    </p>
+                                    <div class="child-actions">
+                                        <button class="btn btn-primary" onclick="viewQR('${childId}')">
+                                            <span class="btn-text">
+                                                <i class="fas fa-qrcode"></i> View QR Code
+                                            </span>
+                                        </button>
+                                        <button class="btn btn-danger" onclick="deleteChild('${childId}')">
+                                            <span class="btn-text">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        childrenList.innerHTML += childCard;
+                    });
+
+                    childrenList.classList.remove('hidden');
+                    emptyState.classList.add('hidden');
+                }
+
+                loadingChildren.classList.add('hidden');
+
+            } catch (error) {
+                console.error('Load children error:', error);
+                showToast('Error loading children: ' + error.message, 'error');
+                loadingChildren.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('childForm').reset();
+        }
+
+        // QR Functions - Simple Offline QR
+        async function viewQR(childId) {
+            if (!currentUser) {
+                showToast('Please login first', 'error');
+                showPage('login');
+                return;
+            }
+
+            try {
+                const childDoc = await db.collection('children').doc(childId).get();
+                if (!childDoc.exists) {
+                    showToast('Child not found', 'error');
+                    return;
+                }
+
+                const child = childDoc.data();
+                currentQRChildId = childId;
+                currentChildData = child;
+
+                // Update QR page with child data
+                document.getElementById('qrChildName').textContent = child.name;
+                document.getElementById('qrChildCity').textContent = child.city;
+
+                document.getElementById('dataChildName').textContent = child.name;
+                document.getElementById('dataChildAge').textContent = child.age;
+                document.getElementById('dataChildCity').textContent = child.city;
+                document.getElementById('dataParentPhone').textContent = child.parentPhoneOnline;
+                document.getElementById('dataEmergencyMessage').textContent = child.emergencyMessage;
+
+                // Generate QR code with simple text data
+                generateSimpleQR(child);
+
+                showPage('qrPage');
+
+            } catch (error) {
+                console.error('View QR error:', error);
+                showToast('Error loading child data', 'error');
+            }
+        }
+
+        function generateSimpleQR(child) {
+            // Simple text data for offline QR
+            const qrContent = `
+SAFECHILD QR - EMERGENCY
+========================
+Child: ${child.name}
+Age: ${child.age}
+City: ${child.city}
+Emergency Phone: ${child.parentPhoneOnline}
+Emergency Message: ${child.emergencyMessage}
+========================
+If found, please contact parent immediately.
+Do not share this information.
+Generated: ${new Date().toLocaleDateString()}
+            `;
+
+            generateQRCode(qrContent.trim(), 'qrcode', 320);
+        }
+
+        function generateQRCode(content, containerId, size) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            try {
+                if (typeof qrcode === 'undefined') {
+                    throw new Error('QRCode library not loaded');
+                }
+
+                const qr = qrcode(0, 'M');
+                qr.addData(content);
+                qr.make();
+
+                const canvas = document.createElement('canvas');
+                const quietZone = 4;
+                const cellSize = Math.max(2, Math.floor((size - quietZone * 2) / qr.getModuleCount()));
+                const actualSize = qr.getModuleCount() * cellSize + quietZone * 2;
+
+                canvas.width = actualSize;
+                canvas.height = actualSize;
+                const ctx = canvas.getContext('2d');
+
+                // Draw white background with quiet zone
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, actualSize, actualSize);
+
+                // Draw QR code cells
+                ctx.fillStyle = '#000000';
+                const count = qr.getModuleCount();
+
+                for (let row = 0; row < count; row++) {
+                    for (let col = 0; col < count; col++) {
+                        if (qr.isDark(row, col)) {
+                            ctx.fillRect(
+                                col * cellSize + quietZone,
+                                row * cellSize + quietZone,
+                                cellSize,
+                                cellSize
+                            );
+                        }
+                    }
+                }
+
+                // Add SafeChild logo in center
+                const centerX = actualSize / 2;
+                const centerY = actualSize / 2;
+                const logoSize = cellSize * 3;
+
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(centerX - logoSize / 2, centerY - logoSize / 2, logoSize, logoSize);
+
+                ctx.fillStyle = '#2563eb';
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, logoSize / 2 - 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold ' + (logoSize / 2.5) + 'px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('SC', centerX, centerY);
+
+                container.appendChild(canvas);
+
+            } catch (error) {
+                console.error('QR generation error:', error);
+                showToast('Error generating QR code', 'error');
+            }
+        }
+
+        function downloadQR() {
+            if (!currentQRChildId || !currentChildData) {
+                showToast('No QR code to download', 'error');
+                return;
+            }
+
+            const container = document.querySelector('#qrcode canvas');
+            if (!container) {
+                showToast('QR code not ready. Please wait.', 'error');
+                return;
+            }
+
+            try {
+                setButtonLoading('downloadBtn', true);
+
+                const link = document.createElement('a');
+                const fileName = `SafeChildQR_${currentChildData.name.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.png`;
+                link.download = fileName;
+                link.href = container.toDataURL('image/png');
+
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                showToast('QR code downloaded successfully', 'success');
+                setButtonLoading('downloadBtn', false);
+
+            } catch (error) {
+                console.error('Download error:', error);
+                showToast('Error downloading QR code', 'error');
+                setButtonLoading('downloadBtn', false);
+            }
+        }
+
+        // Utility Functions
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'exclamation-triangle'}"></i>
+                <span>${message}</span>
+            `;
+
+            toastContainer.appendChild(toast);
+
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 3000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Make functions globally available
+        window.showPage = showPage;
+        window.deleteChild = deleteChild;
+        window.viewQR = viewQR;
+        window.downloadQR = downloadQR;
+        window.logout = logout;
+        window.deleteAccount = deleteAccount;
+    </script>
+</body>
+
+</html>
