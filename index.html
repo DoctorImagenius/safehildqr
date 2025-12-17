@@ -32,6 +32,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <!-- QR Code Library -->
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <!-- QR Scanner Library -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <style>
         /* CSS Reset & Base */
         :root {
@@ -1174,6 +1176,131 @@
             color: var(--danger-red);
         }
 
+        /* QR Scanner Page Styles */
+        .scan-container {
+            text-align: center;
+        }
+
+        .camera-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            height: 400px;
+            margin: 0 auto;
+            background: var(--dark-bg);
+            border-radius: var(--radius);
+            overflow: hidden;
+            border: 2px solid var(--light-border);
+        }
+
+        .dark-theme .camera-container {
+            border-color: var(--dark-border);
+        }
+
+        #scannerVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .scan-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .scan-frame {
+            width: 250px;
+            height: 250px;
+            border: 2px solid rgba(255, 255, 255, 0.7);
+            position: relative;
+            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5);
+        }
+
+        .corner {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-color: var(--primary-blue);
+            border-style: solid;
+        }
+
+        .corner.tl {
+            top: -2px;
+            left: -2px;
+            border-width: 4px 0 0 4px;
+            border-radius: 8px 0 0 0;
+        }
+
+        .corner.tr {
+            top: -2px;
+            right: -2px;
+            border-width: 4px 4px 0 0;
+            border-radius: 0 8px 0 0;
+        }
+
+        .corner.bl {
+            bottom: -2px;
+            left: -2px;
+            border-width: 0 0 4px 4px;
+            border-radius: 0 0 0 8px;
+        }
+
+        .corner.br {
+            bottom: -2px;
+            right: -2px;
+            border-width: 0 4px 4px 0;
+            border-radius: 0 0 8px 0;
+        }
+
+        .scan-text {
+            color: white;
+            margin-top: 20px;
+            font-weight: 600;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .scan-result {
+            animation: fadeIn 0.5s ease;
+        }
+
+        .emergency-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .scan-controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .scan-instructions {
+            background: rgba(37, 99, 235, 0.05);
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            text-align: left;
+            margin-top: 2rem;
+        }
+
+        .dark-theme .scan-instructions {
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .manual-input {
+            margin-top: 2rem;
+            text-align: left;
+        }
+
         /* Mobile Bottom Action Bar - REORDERED */
         .mobile-bottom-bar {
             display: none;
@@ -1633,6 +1760,24 @@
             .password-toggle {
                 top: 1rem;
             }
+
+            /* Scanner Mobile */
+            .camera-container {
+                height: 300px;
+            }
+            
+            .scan-frame {
+                width: 200px;
+                height: 200px;
+            }
+            
+            .scan-controls {
+                flex-direction: column;
+            }
+            
+            .scan-controls .btn {
+                width: 100%;
+            }
         }
 
         @media (max-width: 480px) {
@@ -1705,6 +1850,16 @@
             .password-toggle {
                 right: 1rem;
                 top: 1rem;
+            }
+
+            /* Scanner Mobile */
+            .camera-container {
+                height: 250px;
+            }
+            
+            .scan-frame {
+                width: 180px;
+                height: 180px;
             }
         }
 
@@ -1824,6 +1979,10 @@
                 <i class="fas fa-home"></i>
                 <span>Home</span>
             </button>
+            <button class="mobile-bottom-btn" onclick="showPage('scanQR')">
+                <i class="fas fa-camera"></i>
+                <span>Scan QR</span>
+            </button>
             <button class="mobile-bottom-btn" onclick="showPage('dashboard')" id="mobileDashboardBtn">
                 <i class="fas fa-tachometer-alt"></i>
                 <span>Dashboard</span>
@@ -1831,10 +1990,6 @@
             <button class="mobile-bottom-btn" onclick="showPage('settings')" id="mobileSettingsBtn">
                 <i class="fas fa-cog"></i>
                 <span>Settings</span>
-            </button>
-            <button class="mobile-bottom-btn" onclick="logout()" id="mobileLogoutBtn">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Logout</span>
             </button>
         </div>
     </div>
@@ -1859,6 +2014,14 @@
                             </span>
                             <div class="btn-spinner"></div>
                         </button>
+                        
+                        <!-- NEW SCAN QR BUTTON -->
+                        <button class="btn btn-secondary btn-lg" onclick="showPage('scanQR')" id="scanQRBtn">
+                            <span class="btn-text">
+                                <i class="fas fa-camera"></i> Scan QR Code
+                            </span>
+                        </button>
+                        
                         <button id="homeSignupBtn" class="btn btn-primary btn-lg" onclick="showPage('signup')">
                             <span class="btn-text">
                                 <i class="fas fa-user-plus"></i> Sign Up Now
@@ -2195,7 +2358,125 @@
             </div>
         </section>
 
-        <!-- Account Settings Page - FIXED TEXT COLORS -->
+        <!-- QR Scanner Page -->
+        <section id="scanQR" class="page">
+            <div class="container">
+                <div class="form-container">
+                    <h2 class="form-title">
+                        <i class="fas fa-camera"></i> Scan QR Code
+                    </h2>
+                    
+                    <div class="scan-container">
+                        <!-- Camera Preview -->
+                        <div class="camera-container" id="cameraContainer">
+                            <video id="scannerVideo" playsinline autoplay></video>
+                            <div class="scan-overlay">
+                                <div class="scan-frame">
+                                    <div class="corner tl"></div>
+                                    <div class="corner tr"></div>
+                                    <div class="corner bl"></div>
+                                    <div class="corner br"></div>
+                                </div>
+                                <p class="scan-text">Align QR code within frame</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Manual Input Option -->
+                        <div class="manual-input mt-3">
+                            <h4>Or Enter QR Data Manually</h4>
+                            <textarea id="manualQRInput" class="form-input" rows="4" 
+                                placeholder="Paste QR code text here..."></textarea>
+                            <button class="btn btn-outline mt-2" onclick="processManualQR()">
+                                <span class="btn-text">Process QR Data</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Scan Result -->
+                        <div class="scan-result hidden" id="scanResult">
+                            <div class="qr-data mt-3">
+                                <h3><i class="fas fa-shield-alt"></i> SafeChild QR Scan Result</h3>
+                                <div class="data-item">
+                                    <span class="data-label">
+                                        <i class="fas fa-child"></i> Child's Name
+                                    </span>
+                                    <span class="data-value" id="scanChildName">-</span>
+                                </div>
+                                <div class="data-item">
+                                    <span class="data-label">
+                                        <i class="fas fa-birthday-cake"></i> Age
+                                    </span>
+                                    <span class="data-value" id="scanChildAge">-</span>
+                                </div>
+                                <div class="data-item">
+                                    <span class="data-label">
+                                        <i class="fas fa-city"></i> City
+                                    </span>
+                                    <span class="data-value" id="scanChildCity">-</span>
+                                </div>
+                                <div class="data-item">
+                                    <span class="data-label">
+                                        <i class="fas fa-phone"></i> Emergency Phone
+                                    </span>
+                                    <span class="data-value" id="scanParentPhone">-</span>
+                                </div>
+                                <div class="data-item">
+                                    <span class="data-label">
+                                        <i class="fas fa-exclamation-circle"></i> Emergency Message
+                                    </span>
+                                    <span class="data-value" id="scanEmergencyMessage">-</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Emergency Actions -->
+                            <div class="emergency-actions mt-3">
+                                <button class="btn btn-danger" onclick="callEmergency()" id="callEmergencyBtn">
+                                    <span class="btn-text">
+                                        <i class="fas fa-phone"></i> Call Emergency Number
+                                    </span>
+                                </button>
+                                <button class="btn btn-secondary mt-2" onclick="copyQRData()">
+                                    <span class="btn-text">
+                                        <i class="fas fa-copy"></i> Copy Information
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Controls -->
+                        <div class="scan-controls mt-3">
+                            <button class="btn btn-primary" onclick="startScanner()" id="startScannerBtn">
+                                <span class="btn-text">
+                                    <i class="fas fa-play"></i> Start Scanner
+                                </span>
+                            </button>
+                            <button class="btn btn-outline" onclick="stopScanner()" id="stopScannerBtn" disabled>
+                                <span class="btn-text">
+                                    <i class="fas fa-stop"></i> Stop Scanner
+                                </span>
+                            </button>
+                            <button class="btn btn-outline" onclick="showPage('home')">
+                                <span class="btn-text">
+                                    <i class="fas fa-home"></i> Back to Home
+                                </span>
+                            </button>
+                        </div>
+                        
+                        <!-- Instructions -->
+                        <div class="scan-instructions mt-3">
+                            <h4><i class="fas fa-info-circle"></i> How to Scan</h4>
+                            <ul style="padding-left: 1.5rem;">
+                                <li>Allow camera access when prompted</li>
+                                <li>Hold QR code steady within the frame</li>
+                                <li>Ensure good lighting</li>
+                                <li>Scanner works automatically</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Account Settings Page -->
         <section id="settings" class="page">
             <div class="container">
                 <div class="settings-container">
@@ -2346,12 +2627,18 @@
         const homeLoginBtn = document.getElementById('homeLoginBtn');
         const currentYear = document.getElementById('currentYear');
         const mobileBottomBar = document.getElementById('mobileBottomBar');
+        const scanQRBtn = document.getElementById('scanQRBtn');
+
+        // QR Scanner Variables
+        let scannerActive = false;
+        let videoStream = null;
+        let scanningInterval = null;
+        let currentPage = 'home';
 
         // State
         let currentUser = null;
         let currentQRChildId = null;
         let currentChildData = null;
-        let currentPage = 'home';
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function () {
@@ -2540,12 +2827,14 @@
                 homeSignupBtn.classList.add('hidden');
                 homeLoginBtn.classList.add('hidden');
                 mobileBottomBar.classList.remove('hidden');
+                scanQRBtn.classList.remove('hidden');
             } else {
                 dashboardBtn.classList.add('hidden');
                 homeDashboardBtn.classList.add('hidden');
                 homeSignupBtn.classList.remove('hidden');
                 homeLoginBtn.classList.remove('hidden');
                 mobileBottomBar.classList.add('hidden');
+                scanQRBtn.classList.remove('hidden'); // Scan QR should still be visible
             }
         }
 
@@ -2583,7 +2872,7 @@
             });
         }
 
-        // Button Loading State Functions - IMPROVED SPINNER
+        // Button Loading State Functions
         function setButtonLoading(buttonId, isLoading) {
             const button = document.getElementById(buttonId);
             if (!button) return;
@@ -2620,7 +2909,7 @@
             return errors;
         }
 
-        // SIGNUP FUNCTION with better error handling
+        // SIGNUP FUNCTION
         async function signup() {
             const name = document.getElementById('signupName').value.trim();
             const phone = document.getElementById('signupPhone').value.trim();
@@ -2673,7 +2962,7 @@
             }
         }
 
-        // LOGIN FUNCTION with error handling
+        // LOGIN FUNCTION
         async function login() {
             const phone = document.getElementById('loginPhone').value.trim();
             const password = document.getElementById('loginPassword').value;
@@ -2801,6 +3090,11 @@
 
         async function logout() {
             try {
+                // Stop scanner if active
+                if (scannerActive) {
+                    stopScanner();
+                }
+                
                 await auth.signOut();
                 showToast('Logged out successfully', 'success');
                 showPage('home');
@@ -2832,6 +3126,11 @@
 
         // Page Navigation
         function showPage(pageId) {
+            // Stop scanner if leaving scan page
+            if (currentPage === 'scanQR' && pageId !== 'scanQR') {
+                stopScanner();
+            }
+
             // Hide all pages
             document.querySelectorAll('.page').forEach(page => {
                 page.classList.remove('active');
@@ -2858,6 +3157,10 @@
                     loadUserSettings();
                 } else if (pageId === 'addChild') {
                     resetForm();
+                } else if (pageId === 'scanQR') {
+                    // Reset scan result when opening scanner
+                    document.getElementById('scanResult').classList.add('hidden');
+                    document.getElementById('manualQRInput').value = '';
                 }
             }
         }
@@ -3184,6 +3487,205 @@ Generated: ${new Date().toLocaleDateString()}
             }
         }
 
+        // QR SCANNER FUNCTIONS
+        async function startScanner() {
+            try {
+                setButtonLoading('startScannerBtn', true);
+                
+                // Request camera access
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                });
+                
+                videoStream = stream;
+                const videoElement = document.getElementById('scannerVideo');
+                videoElement.srcObject = stream;
+                
+                // Enable stop button
+                document.getElementById('stopScannerBtn').disabled = false;
+                setButtonLoading('startScannerBtn', false);
+                scannerActive = true;
+                
+                // Initialize QR scanning
+                initializeQRScanning(videoElement);
+                
+                showToast('Camera started. Point at QR code.', 'success');
+                
+            } catch (error) {
+                console.error('Camera error:', error);
+                showToast('Camera access denied. Please allow camera permission.', 'error');
+                setButtonLoading('startScannerBtn', false);
+                
+                // For demo/testing purposes, simulate QR detection
+                simulateQRDetection();
+            }
+        }
+
+        function stopScanner() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            
+            const videoElement = document.getElementById('scannerVideo');
+            videoElement.srcObject = null;
+            
+            document.getElementById('stopScannerBtn').disabled = true;
+            scannerActive = false;
+            
+            if (scanningInterval) {
+                clearInterval(scanningInterval);
+                scanningInterval = null;
+            }
+            
+            showToast('Scanner stopped', 'success');
+        }
+
+        function initializeQRScanning(videoElement) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            
+            function scanFrame() {
+                if (!scannerActive) return;
+                
+                if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
+                    canvas.width = videoElement.videoWidth;
+                    canvas.height = videoElement.videoHeight;
+                    context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                    
+                    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                    
+                    try {
+                        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                            inversionAttempts: "dontInvert",
+                        });
+                        
+                        if (code) {
+                            // QR code detected!
+                            processQRContent(code.data);
+                            showToast('QR Code detected!', 'success');
+                            stopScanner();
+                        }
+                    } catch (e) {
+                        console.log("QR scanning error:", e);
+                    }
+                }
+                
+                requestAnimationFrame(scanFrame);
+            }
+            
+            scanFrame();
+        }
+
+        function processManualQR() {
+            const qrText = document.getElementById('manualQRInput').value.trim();
+            
+            if (!qrText) {
+                showToast('Please enter QR code text', 'error');
+                return;
+            }
+            
+            processQRContent(qrText);
+        }
+
+        function processQRContent(qrContent) {
+            try {
+                // Parse QR content
+                const lines = qrContent.split('\n');
+                const data = {};
+                
+                lines.forEach(line => {
+                    if (line.includes('Child:')) data.name = line.split('Child:')[1]?.trim();
+                    if (line.includes('Age:')) data.age = line.split('Age:')[1]?.trim();
+                    if (line.includes('City:')) data.city = line.split('City:')[1]?.trim();
+                    if (line.includes('Emergency Phone:')) data.phone = line.split('Emergency Phone:')[1]?.trim();
+                    if (line.includes('Emergency Message:')) data.message = line.split('Emergency Message:')[1]?.trim();
+                });
+                
+                // Show scan result
+                document.getElementById('scanChildName').textContent = data.name || 'Not found';
+                document.getElementById('scanChildAge').textContent = data.age || 'Not found';
+                document.getElementById('scanChildCity').textContent = data.city || 'Not found';
+                document.getElementById('scanParentPhone').textContent = data.phone || 'Not found';
+                document.getElementById('scanEmergencyMessage').textContent = data.message || 'Not found';
+                
+                // Show result section
+                document.getElementById('scanResult').classList.remove('hidden');
+                
+                // Update call button
+                if (data.phone) {
+                    document.getElementById('callEmergencyBtn').setAttribute('data-phone', data.phone);
+                }
+                
+                // Scroll to result
+                document.getElementById('scanResult').scrollIntoView({ behavior: 'smooth' });
+                
+            } catch (error) {
+                console.error('QR processing error:', error);
+                showToast('Invalid QR code format', 'error');
+            }
+        }
+
+        function simulateQRDetection() {
+            // Demo QR data for testing
+            const demoQRData = `SAFECHILD QR - EMERGENCY
+========================
+Child: Emma Johnson
+Age: 7
+City: New York
+Emergency Phone: +1 (555) 123-4567
+Emergency Message: This child may be lost. Please contact parents immediately.
+========================
+If found, please contact parent immediately.
+Do not share this information.
+Generated: ${new Date().toLocaleDateString()}`;
+            
+            processQRContent(demoQRData);
+            showToast('Demo QR Code detected!', 'success');
+        }
+
+        function callEmergency() {
+            const phoneBtn = document.getElementById('callEmergencyBtn');
+            const phoneNumber = phoneBtn.getAttribute('data-phone');
+            
+            if (!phoneNumber || phoneNumber === 'Not found') {
+                showToast('No phone number available', 'error');
+                return;
+            }
+            
+            // Remove non-numeric characters except +
+            const cleanNumber = phoneNumber.replace(/[^\d+]/g, '');
+            
+            if (confirm(`Call emergency number: ${phoneNumber}?`)) {
+                window.location.href = `tel:${cleanNumber}`;
+            }
+        }
+
+        function copyQRData() {
+            const data = {
+                name: document.getElementById('scanChildName').textContent,
+                age: document.getElementById('scanChildAge').textContent,
+                city: document.getElementById('scanChildCity').textContent,
+                phone: document.getElementById('scanParentPhone').textContent,
+                message: document.getElementById('scanEmergencyMessage').textContent
+            };
+            
+            const textToCopy = `SafeChild QR Information:
+Child: ${data.name}
+Age: ${data.age}
+City: ${data.city}
+Emergency Phone: ${data.phone}
+Emergency Message: ${data.message}`;
+            
+            navigator.clipboard.writeText(textToCopy)
+                .then(() => showToast('Information copied to clipboard', 'success'))
+                .catch(() => showToast('Failed to copy', 'error'));
+        }
+
         // Utility Functions
         function showToast(message, type = 'success') {
             const toast = document.createElement('div');
@@ -3215,11 +3717,16 @@ Generated: ${new Date().toLocaleDateString()}
         window.downloadQR = downloadQR;
         window.logout = logout;
         window.deleteAccount = deleteAccount;
+        window.startScanner = startScanner;
+        window.stopScanner = stopScanner;
+        window.processManualQR = processManualQR;
+        window.callEmergency = callEmergency;
+        window.copyQRData = copyQRData;
+        
+        // PWA Service Worker
         if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js");
-}
-
+            navigator.serviceWorker.register("/sw.js");
+        }
     </script>
 </body>
-
 </html>
