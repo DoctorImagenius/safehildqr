@@ -1972,27 +1972,31 @@
         </div>
     </header>
 
-    <!-- Mobile Bottom Action Bar - REORDERED -->
-    <div class="mobile-bottom-bar" id="mobileBottomBar">
-        <div class="mobile-bottom-actions">
-            <button class="mobile-bottom-btn" onclick="showPage('home')">
-                <i class="fas fa-home"></i>
-                <span>Home</span>
-            </button>
-            <button class="mobile-bottom-btn" onclick="showPage('scanQR')">
-                <i class="fas fa-camera"></i>
-                <span>Scan QR</span>
-            </button>
-            <button class="mobile-bottom-btn" onclick="showPage('dashboard')" id="mobileDashboardBtn">
-                <i class="fas fa-tachometer-alt"></i>
-                <span>Dashboard</span>
-            </button>
-            <button class="mobile-bottom-btn" onclick="showPage('settings')" id="mobileSettingsBtn">
-                <i class="fas fa-cog"></i>
-                <span>Settings</span>
-            </button>
-        </div>
+    <!-- Alternative: Mobile Bottom Bar with Logout -->
+<div class="mobile-bottom-bar" id="mobileBottomBar">
+    <div class="mobile-bottom-actions">
+        <button class="mobile-bottom-btn" onclick="showPage('home')">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </button>
+        <button class="mobile-bottom-btn" onclick="showPage('scanQR')">
+            <i class="fas fa-camera"></i>
+            <span>Scan QR</span>
+        </button>
+        <button class="mobile-bottom-btn" onclick="showPage('dashboard')" id="mobileDashboardBtn">
+            <i class="fas fa-tachometer-alt"></i>
+            <span>Dashboard</span>
+        </button>
+        <button class="mobile-bottom-btn" onclick="showPage('settings')" id="mobileSettingsBtn">
+            <i class="fas fa-cog"></i>
+            <span>Settings</span>
+        </button>
+        <button class="mobile-bottom-btn" onclick="logout()" id="mobileLogoutBtnAlt">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>Logout</span>
+        </button>
     </div>
+</div>
 
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
