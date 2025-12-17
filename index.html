@@ -5,6 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SafeChild QR</title>
+    <link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#60a5fa">
+
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+
     <!-- QR Code Style Favicon -->
     <link rel="icon" href="data:image/svg+xml,
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
@@ -3209,6 +3215,10 @@ Generated: ${new Date().toLocaleDateString()}
         window.downloadQR = downloadQR;
         window.logout = logout;
         window.deleteAccount = deleteAccount;
+        if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js");
+}
+
     </script>
 </body>
 
